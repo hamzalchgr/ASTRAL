@@ -1,9 +1,10 @@
 import express from 'express';
 import type { CookieOptions, Request, Response } from 'express';
-import { registerSchema } from '../Schemas/userSchema';
+import { loginSchema, registerSchema } from '../Schemas/userSchema';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { pool } from '../Config/db';
+import { memoizer } from 'zod/v4/core';
 
 const router = express.Router();
 
@@ -38,12 +39,14 @@ router.post('/register', async (req: Request, res: Response) => {
          [name, email, passwordHash]
       );
 
-      const user = newUser.rows[0]
+      const user = newUser.rows[0];
 
       const token = genToken(user.id);
       res.cookie('token', token, cookiesOptions);
 
-      return res.status(201).json({user});
+      return res
+         .status(201)
+         .json({ message: 'User registered successfully', user });
    } catch (error: any) {
       if (error?.code === '23505') {
          return res.status(409).json({
@@ -56,6 +59,57 @@ router.post('/register', async (req: Request, res: Response) => {
       res.status(500).json({
          message: 'Internal server error.',
       });
+   }
+});
+
+// LOGIN
+router.post('/login', async (req: Request, res: Response) => {
+   const validation = loginSchema.safeParse(req.body);
+
+   if (!validation.success) {
+      return res.status(400).json({
+         message: validation.error.flatten().fieldErrors,
+      });
+   }
+
+   const { email, password } = validation.data;
+
+   try {
+      const result = await pool.query(
+         `
+            SELECT id, name, email, password FROM users WHERE email = $1
+         `,
+         [email]
+      );
+
+      const user = result.rows[0];
+
+      if (!user) {
+         return res.status(400).json({
+            message: 'Invalid email or password.',
+         });
+      }
+
+      const compare = await bcrypt.compare(password, user.password);
+
+      if (!compare) {
+         return res.status(400).json({
+            message: 'Invalid email or password.',
+         });
+      }
+
+      const token = genToken(user.id);
+      res.cookie('token', token, cookiesOptions);
+
+      return res.status(200).json({message: 'Logged in successfully',
+         id: user.id, name: user.name, email: user.email
+      })
+
+   } catch (error) {
+      console.error('Unexpected login error: ' + error);
+      res.status(500).json({
+         message: "Something went wrong ..."
+      })
    }
 });
 
