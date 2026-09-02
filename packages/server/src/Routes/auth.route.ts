@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { pool } from '../Config/db';
 import { memoizer } from 'zod/v4/core';
+import { protect } from '../Middlewares/auth';
 
 const router = express.Router();
 
@@ -101,16 +102,31 @@ router.post('/login', async (req: Request, res: Response) => {
       const token = genToken(user.id);
       res.cookie('token', token, cookiesOptions);
 
-      return res.status(200).json({message: 'Logged in successfully',
-         id: user.id, name: user.name, email: user.email
-      })
-
+      return res
+         .status(200)
+         .json({
+            message: 'Logged in successfully',
+            id: user.id,
+            name: user.name,
+            email: user.email,
+         });
    } catch (error) {
       console.error('Unexpected login error: ' + error);
       res.status(500).json({
-         message: "Something went wrong ..."
-      })
+         message: 'Something went wrong ...',
+      });
    }
 });
+
+// LOGOUT
+router.post('/logout', (req: Request, res: Response) => {
+   res.cookie('token', '', { ...cookiesOptions, maxAge: 1 });
+   res.json({ message: 'Logged out successfully' });
+});
+
+// USER
+router.get('/user', protect, (req: Request, res: Response) => {
+   res.json(req.user);
+})
 
 export default router;
