@@ -8,3 +8,9 @@ export const productSchema = z.object({
    type: z.string().trim().min(1, 'Product type is required.'),
    img: z.string().trim().url('Product image must be a valid URL.'),
 });
+
+export const productQueriesSchema = z.object({
+   collection: z.string().optional(),
+   product_type: z.string().optional(),
+   search_query: z.string().trim().optional()
+});
