@@ -5,3 +5,13 @@
 --    password VARCHAR(300) NOT NULL,
 --    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 -- );
+
+-- CREATE TABLE IF NOT EXISTS products (
+--    id SERIAL PRIMARY KEY,
+--    uuid UUID NOT NULL UNIQUE,
+--    name VARCHAR(150) NOT NULL,
+--    price NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
+--    collection VARCHAR(100) NOT NULL,
+--    type VARCHAR(100) NOT NULL,
+--    img TEXT NOT NULL
+-- );

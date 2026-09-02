@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 // import jsonParser from 'json-parser';
 import authRoutes from './Routes/auth.route.ts'
+import productRoutes from './Routes/product.route.ts'
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 // app.user(jsonParser());
 
 app.use('/auth', authRoutes);
+app.use('/catalog', productRoutes);
 
 app.listen(PORT, () => {
    console.log('Running ...')
