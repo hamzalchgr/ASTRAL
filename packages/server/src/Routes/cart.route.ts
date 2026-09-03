@@ -1,6 +1,10 @@
 import express from 'express';
 import type { NextFunction, Request, Response } from 'express';
-import { addToCartSchema, cartItemParamsSchema, updateCartItemSchema } from '../Schemas/cartSchema';
+import {
+   addToCartSchema,
+   cartItemParamsSchema,
+   updateCartItemSchema,
+} from '../Schemas/cartSchema';
 import { pool } from '../Config/db';
 
 const router = express.Router();
@@ -147,5 +151,49 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // UPDATE CART
+router.patch('/', async (req: Request, res: Response) => {
+   const validation = updateCartItemSchema.safeParse(req.body);
+
+   if (!validation.success) {
+      return res
+         .status(400)
+         .json({ message: validation.error.flatten().fieldErrors });
+   }
+
+   const { product_uuid, quantity } = validation.data;
+   const user_id = req.user!.id;
+
+   try {
+      if (quantity === 0) {
+         await pool.query(
+            `DELETE FROM cart_items WHERE user_id = $1 AND product_uuid = $2 RETURNING *`,
+            [user_id, product_uuid]
+         );
+
+         return res
+            .status(200)
+            .json({ success: true, message: 'Item removed from cart.' });
+      }
+
+      const result = await pool.query(
+         `UPDATE cart_items SET quantity = $2 WHERE user_id = $3 AND product_uuid = $1`,
+         [product_uuid, quantity, user_id]
+      );
+
+      if (result.rowCount === 0) {
+         return res
+            .status(404)
+            .json({ success: false, message: 'Item not in cart.' });
+      }
+
+      res.status(200).json({ success: true, item: result.rows[0] });
+   } catch (error) {
+      console.error(error);
+      res.status(500).json({
+         success: false,
+         message: 'Internal server error.',
+      });
+   }
+});
 
 export default router;
