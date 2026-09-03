@@ -1,11 +1,18 @@
 import express from 'express';
-import type { Request, Response } from 'express';
-import { addToCartSchema, cartItemParamsSchema } from '../Schemas/cartSchema';
-import { success } from 'zod';
+import type { NextFunction, Request, Response } from 'express';
+import { addToCartSchema, cartItemParamsSchema, updateCartItemSchema } from '../Schemas/cartSchema';
 import { pool } from '../Config/db';
-import { Result } from 'pg';
 
 const router = express.Router();
+
+router.use((req: Request, res: Response, next: NextFunction) => {
+   if (!req.user?.id) {
+      return res
+         .status(401)
+         .json({ success: false, message: 'Login required.' });
+   }
+   next();
+});
 
 // ADD TO CART
 router.post('/add', async (req: Request, res: Response) => {
@@ -18,7 +25,8 @@ router.post('/add', async (req: Request, res: Response) => {
       });
    }
 
-   const { user_id, product_uuid, quantity } = validation.data;
+   const { product_uuid, quantity } = validation.data;
+   const user_id = req.user!.id;
 
    try {
       const product = await pool.query(
@@ -58,57 +66,45 @@ router.post('/add', async (req: Request, res: Response) => {
 });
 
 // REMOVE FROM CART
-router.delete(
-   '/:user_id/:product_uuid',
-   async (req: Request, res: Response) => {
-      const validation = cartItemParamsSchema.safeParse(req.params);
-
-      if (!validation.success) {
-         return res.status(400).json({
-            success: false,
-            message: validation.error.flatten().fieldErrors,
-         });
-      }
-
-      const { user_id, product_uuid } = validation.data;
-
-      try {
-         const result = await pool.query(
-            `DELETE FROM cart_items WHERE user_id = $1 AND product_uuid = $2 RETURNING *`,
-            [user_id, product_uuid]
-         );
-
-         if (result.rowCount === 0) {
-            return res.status(404).json({
-               success: false,
-               message: 'Item not in cart.',
-            });
-         }
-
-         res.status(200).json({
-            success: true,
-            message: 'Item removed from cart.',
-         });
-      } catch (error) {
-         console.error(error);
-         res.status(500).json({ message: 'Internal server error.' });
-      }
-   }
-);
-
-// CLEAR CART
-router.patch('/:user_id', async (req: Request, res: Response) => {
+router.delete('/:product_uuid', async (req: Request, res: Response) => {
    const validation = cartItemParamsSchema.safeParse(req.params);
 
    if (!validation.success) {
-      return res
-         .status(400)
-         .json({
-            success: false,
-            message: validation.error.flatten().fieldErrors,
-         });
+      return res.status(400).json({
+         success: false,
+         message: validation.error.flatten().fieldErrors,
+      });
    }
-   const { user_id } = validation.data;
+
+   const { product_uuid } = validation.data;
+   const user_id = req.user!.id;
+
+   try {
+      const result = await pool.query(
+         `DELETE FROM cart_items WHERE user_id = $1 AND product_uuid = $2 RETURNING *`,
+         [user_id, product_uuid]
+      );
+
+      if (result.rowCount === 0) {
+         return res.status(404).json({
+            success: false,
+            message: 'Item not in cart.',
+         });
+      }
+
+      res.status(200).json({
+         success: true,
+         message: 'Item removed from cart.',
+      });
+   } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Internal server error.' });
+   }
+});
+
+// CLEAR CART
+router.patch('/', async (req: Request, res: Response) => {
+   const user_id = req.user!.id;
 
    try {
       await pool.query(`DELETE FROM cart_items WHERE user_id = $1`, [user_id]);
@@ -127,6 +123,29 @@ router.patch('/:user_id', async (req: Request, res: Response) => {
 });
 
 // GET CART
+router.get('/', async (req: Request, res: Response) => {
+   const user_id = req.user!.id;
 
+   try {
+      const result = await pool.query(
+         `SELECT p.uuid, p.name, p.price, p.collection, p.type, p.img, ci.quantity FROM cart_items ci JOIN products p ON p.uuid = ci.product_uuid WHERE ci.user_id = $1`,
+         [user_id]
+      );
+
+      const total = result.rows.reduce(
+         (sum, item) => sum + item.price * item.quantity
+      );
+
+      res.status(200).json({ success: true, data: result.rows, total });
+   } catch (error) {
+      console.error(error);
+      res.status(500).json({
+         success: false,
+         message: 'Internal server error.',
+      });
+   }
+});
+
+// UPDATE CART
 
 export default router;
