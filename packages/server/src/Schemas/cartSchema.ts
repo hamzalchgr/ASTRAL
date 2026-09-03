@@ -8,5 +8,5 @@ export const addToCartSchema = z.object({
 
 export const cartItemParamsSchema = z.object({
    user_id: z.coerce.number().int().positive(),
-   product_uuid: z.string().uuid(),
+   product_uuid: z.string().uuid().optional(),
 });
