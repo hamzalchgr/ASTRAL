@@ -15,3 +15,13 @@
 --    type VARCHAR(100) NOT NULL,
 --    img TEXT NOT NULL
 -- );
+
+
+
+-- CREATE TABLE IF NOT EXISTS cart_items (
+--    id SERIAL PRIMARY KEY,
+--    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+--    product_uuid UUID NOT NULL REFERENCES products(uuid) ON DELETE CASCADE,
+--    quantity INT NOT NULL CHECK (quantity > 0),
+--    UNIQUE (user_id, product_uuid)
+-- );

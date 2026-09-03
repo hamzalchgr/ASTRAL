@@ -11,7 +11,7 @@ router.post('/create', async (req: Request, res: Response) => {
    const validation = productSchema.safeParse(req.body);
 
    if (!validation.success) {
-      return res.status(401).json({
+      return res.status(400).json({
          success: false,
          message: validation.error.flatten().fieldErrors,
       });

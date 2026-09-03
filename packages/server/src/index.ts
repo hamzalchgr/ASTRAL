@@ -5,6 +5,7 @@ import cors from 'cors';
 // import jsonParser from 'json-parser';
 import authRoutes from './Routes/auth.route.ts'
 import productRoutes from './Routes/product.route.ts'
+import cartRoutes from './Routes/cart.route.ts'
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(express.json());
 
 app.use('/auth', authRoutes);
 app.use('/catalog', productRoutes);
+app.use('/cart', cartRoutes);
 
 app.listen(PORT, () => {
    console.log('Running ...')
