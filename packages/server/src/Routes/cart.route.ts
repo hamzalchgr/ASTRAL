@@ -1,8 +1,9 @@
 import express from 'express';
 import type { Request, Response } from 'express';
-import { addToCartSchema } from '../Schemas/cartSchema';
+import { addToCartSchema, cartItemParamsSchema } from '../Schemas/cartSchema';
 import { success } from 'zod';
 import { pool } from '../Config/db';
+import { Result } from 'pg';
 
 const router = express.Router();
 
@@ -57,6 +58,41 @@ router.post('/add', async (req: Request, res: Response) => {
 });
 
 // REMOVE FROM CART
+router.delete('/:user_id/:product_uuid', async (req: Request, res: Response) => {
+   const validation = cartItemParamsSchema.safeParse(req.params);
+
+   if (!validation.success) {
+      return res.status(400).json({
+         success: false,
+         message: validation.error.flatten().fieldErrors,
+      });
+   }
+
+   const { user_id, product_uuid } = validation.data;
+
+   try {
+      const result = await pool.query(
+         `DELETE FROM cart_items WHERE user_id = $1 AND product_uuid = $2 RETURNING *`,
+         [user_id, product_uuid]
+      );
+
+      if (result.rowCount === 0) {
+         return res.status(404).json({
+            success: false,
+            message: 'Item not in cart.',
+         });
+      }
+
+      res.status(200).json({
+         success: true,
+         message: 'Item removed from cart.',
+      });
+   } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Internal server error.' });
+   }
+});
+
 // CLEAR CART
 // GET CART
 
